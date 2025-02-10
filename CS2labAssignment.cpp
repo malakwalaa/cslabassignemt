@@ -1,46 +1,77 @@
 // CS2labAssignment.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
-
-
 #include <iostream>
 #include <vector>
 #include <string>
 #include <stdexcept>
 #include <queue>
+#include<algorithm>
+#include<cstdlib>
+#include<ctime>
+#include<chrono>
 
 using namespace std;
+using namespace std::chrono;
 
 class patient
 {
 private:
     string patientId;
     char gender;
-    int time;
+    string time;
     char type;
+    //int depTIME;
+    time_point<steady_clock> arrived_time;
+     time_point<steady_clock> depart_time;
 public:
-   patient() 
+    patient(string p, char g,string t,char ty)
     {
-        patientId = "";
-        gender = 'M';
-        time = "";
-        type = 'U';
-    }
-    void isIDvalidated(string s) // validates the id length is 14 and the numbers are from 0 to 9
-    {
-        for (int i = 0; i < s.length(); i++)
-        {
-            if (s[i]<'0' || s[i]>'9')
-            {
-                cout << "Error: ID is invalid" << endl;
-            }
-        }
-        if (s.length() != 14)
-        {
-            cout << "Error: ID is not validated. Another Id will be generated" << endl;
-
-        }
+        patientId = p;
+        gender = g;
+        time = t;
+        type = ty;
+        //depTIME = d;
 
     }
+    void set_arrived_time(){
+        arrived_time = steady_clock::now(); 
+    }
+    void set_departure_time(){
+        depart_time = steady_clock::now();
+    }
+    int wait_time()const{
+        return duration_cast<seconds>(depart_time - arrived_time).count();
+    }
+    void isIDvalidated(string s){
+        try{
+        if (s.length()!=14){
+            throw invalid_argument("ID lenght must be 14");
+        }
+        for (char c:s){
+             if (c < '0' || c > '9'){
+                throw invalid_argument("ID should only contain digits from 0 to 9");
+             }
+        }
+        }catch (const invalid_argument& e ){
+            cout<<"error: "<<e.what()<<endl;
+        }
+    }
+    // void isIDvalidated(string s) // validates the id length is 14 and the numbers are from 0 to 9
+    // {
+    //     for (int i = 0; i < s.length(); i++)
+    //     {
+    //         if (s[i] < '0' || s[i]>'9')
+    //         {
+    //             cout << "Error: ID is invalid" << endl;
+    //         }
+    //     }
+    //     if (s.length() != 14)
+    //     {
+    //         cout << "Error: ID is not validated. Another Id will be generated" << endl;
+
+    //     }
+
+    // }
     string getPatientId()
     {
         return patientId;
@@ -54,229 +85,278 @@ public:
         return type;
 
     }
-     int  extractTime(string t)
+    int extractTime(string t)
     {
-       
-       int hours= (t[0] - '0') * 10 + (t[1] - '0');
-       int minutes = (t[3] - '0') * 10 + (t[4] - '0');
-       return (hours * 60) + minutes;
+
+        int hours = (t[0] - '0') * 10 + (t[1] - '0');
+        int minutes = (t[3] - '0') * 10 + (t[4] - '0');
+        return (hours * 60) + minutes;
 
 
     }
- void Random()
-        {
-        patient p;
-        if (rand() % 2)
-        {
-            p.gender = 'M';
-        }
-        else {
-            p.gender = 'F';
-        }
-        if (rand() % 2)
-        {
-            p.gender = 'U';
-        }
-        else {
-             p.gender = 'N';
-        }
+    string getTime()
+    {
+        return time;
+    }
+    // void setdepTIME(int s)
+    // {    
+    //     depTIME = s;
+    // }
+    // int getdepTIME() 
+    // {
+    //     return depTIME;
+    // }
+    patient Random()
+    {
       
+        if (rand() % 2)
+        {
+           gender = 'M';
+        }
+        else {
+            gender = 'F';
+        }
+        if (rand() % 2)
+        {
+            type = 'U';
+        }
+        else {
+           type = 'N';
+        }
+        patientId = string(14, '0');
+
         for (int i = 0; i < 14; i++)
         {
-            p.patientId[i] = rand()%10;
+           patientId[i] = '0'+(rand() % 10);
         }
-         
+
         int hours = rand() % 24;
         int minutes = rand() % 60;
         if (hours < 10)
         {
-            p.time = "0" + to_string(hours) + ":" + to_string(minutes);
+           time = "0" + to_string(hours) + ":" + to_string(minutes);
         }
         else {
-            p.time = to_string(hours) + ":" + to_string(minutes);
+           time = to_string(hours) + ":" + to_string(minutes);
         }
-        
+
         if (minutes < 10)
         {
-            p.time = to_string(hours) + ":" + "0" + to_string(minutes);
+           time = to_string(hours) + ":" + "0" + to_string(minutes);
         }
         else {
-            p.time = to_string(hours) + ":" + to_string(minutes);
+           time = to_string(hours) + ":" + to_string(minutes);
         }
-
+        set_arrived_time();
+        patient p(patientId,gender,time,type);
+        return p;
     }
 };
-class queueing_system{
-    private:
-    queue<patient> urgentqueue; 
+class queueing_system {
+private:
+    queue<patient> urgentqueue;
     queue<patient> normalqueue;
-    int max_time; // when i do it as a const i get an error, why?
-   char patient_status;
+    const int max_time=10; // when i do it as a const i get an error, why?
+   
 
-    public:
-    queueing_system(){
-        max_time = 10;
-    }
-    void add_to_list(const patient& p){
-        if (patient_status == 'u'|| patient_status == 'U'){
+public:
+    // queueing_system() {
+    //     max_time = 10;
+    // }
+    void add_to_list( patient& p) {
+        if ( p.getType() == 'U') {
             urgentqueue.push(p);
-        }else if (patient_status=='N' || patient_status =='n'){
-             normalqueue.push(p);
         }
+        else if (p.getType() == 'N') {
+            normalqueue.push(p);
+        }
+        
     }
-    // void next (){ // ask if we need this if not delete
-    //     if (urgentqueue.empty()== false){
-    //         patient next_p = urgentqueue.front();
-    //         uregentqueue.pop();
-    //         cout<<"current patient of type urgent"<<next.patientId<< "at: "<<next.time<<endl;
-    //     }else if (normalqueue.empty()== false){
-    //         patient next_p = normalqueue.front();
-    //         normalqueue.pop();
-    //         cout<<"current patient of type normal"<<next.patientId<< "at: "<<next.time<<endl;
+    // It first serves patients from the urgent queue, recording their departure time, and then serves patients from the normal queue, recording their arrival time
+//Each served patient is added to the healedPatients vector. The function stops when n patients have been served or when both queues are empty. The resulting vector of healed patients is then returned.
+    vector<patient> Serving(int n)
+    {
+        //cout<<"in serving"<<endl;
+        vector <patient> healedPatients;
+        while (!urgentqueue.empty() && n > 0)
+        {
+            patient healed = urgentqueue.front();
+            healed.set_departure_time(); // takes the current time
+            healedPatients.push_back(healed);
+            urgentqueue.pop();
+            n--;
+        }
+        while (!normalqueue.empty() && n > 0)
+        {
+            patient healed = normalqueue.front();
+            healed.set_arrived_time(); // takes the current time
+            healedPatients.push_back(healed);
+            normalqueue.pop();
+            n--;
 
-    //     }else{
-    //         cout<<"no patients waiting"<<endl;
-    //     }
+        }
+        return healedPatients;
+
+    }
+    int getsizeUrgent()
+    {
+        return urgentqueue.size();
+    }
+    int getsizeNormal()
+    {
+        return normalqueue.size();
+
+    }
+    void printUrgentqueue()
+    {
+        queue<patient> temp=urgentqueue;
+
+        
+         while (!temp.empty())
+        {
+            cout << "urgent patients id's = "<< temp.front().getPatientId() << " " << endl;
+            temp.pop();
+        }
+           
+        
+    }
+    void printNormalqueue()
+    {
+        queue<patient> temp = normalqueue;
+
+
+        while (!temp.empty())
+        {
+            cout << "normal patient id's = "<<temp.front().getPatientId() << " " << endl;
+            temp.pop();
+        }
+
+
+    }
+
+};
+class wholeProgram {
+private:
+    vector<patient> p;
+    vector<patient> finalp;
+    queueing_system system;
+    vector<int> wait_time;
+    //int time_current;
+    int total_wait_time;
+    int n_served;
+    double avg;
+
+public:
+    wholeProgram() {
+        //time_current = 0;
+        total_wait_time = 0;
+        n_served = 0;
+        avg = 0.0;
+
+    }
+    // static bool checktime(patient p1, patient p2) //we check to the arrival time of patients to see how arrived first
+    // {
+    //     return (p1.extractTime(p1.getTime()) < p2.extractTime(p2.getTime()));
+
     // }
-    // void print(){ // ask if we need this
-    //     cout<<"current waiting queue in clinic for urgent patients: "<<endl;
-    //     cout<<" urgent patients waiting queue: ";
-    //     if (urgentqueue.empty()== true){
-    //         cout<<"0"<<endl;
-    //     }else{
-    //         queue<patient> temp = urgentqueue;
-    //         while (temp.empty()== false){
-    //             cout<<temp.front().patientId<<" "<<endl;
-    //             temp.pop();
-    //         }
+    void generate_patients(int count) {
+        for (int i = 0; i < count; ++i) 
+        {
+            patient p1("",'F',"",'U');// this is dummy data
+            p1.Random();
+            p.push_back(p1);
+            
+            //cout<<i;
+        }
+        
+        //sort(p.begin(), p.end(), checktime);
+    }
+    
+//The simulation function simulates a cycle of patient service
+//It adds patients from the list p to the system, then serves n patients using the Serving function
+//For each served patient, it calculates and displays their waiting time, updates the total wait time, and tracks the total number of served patients
+//it computes the average wait time and prints the status of the urgent and normal queues.
+    void simulation(int n) {
+        
+        for(int i=0;i<p.size();i++)
+        { system.add_to_list(p[i]);}
+        finalp= system.Serving(n);
+        if(finalp.empty()){
+            cout<<"no patients served in this cycle"<<endl;
+        }
+        cout<<"number of served patients "<<finalp.size()<<endl;
+        for (auto& p:finalp)
+        {
+            int waiting_time = p.wait_time();
+            total_wait_time+=waiting_time;
+            cout<<"served patient ID: "<<p.getPatientId()<<" , wait time: "<<waiting_time<< " seconds"<<endl;
+            // total_wait_time+= finalp[i].getdepTIME() - finalp[i].extractTime(finalp[i].getTime());
+            // cout << "served patient id: " << finalp[i].getPatientId() << endl;
+        }
+        n_served += finalp.size();
+        avg=total_wait_time / n_served;
+        system.printUrgentqueue();
+        system.printNormalqueue();
+    }
 
-    //     cout<<"current waiting queue in clinic for normal patients: "<<endl;
-    //     if (normalqueue.empty()== true){
-    //         cout<<"0"<<endl;
-    //     }else{
-    //         queue<patient> temp1 = urgentqueue;
-    //         while (temp1.empty()== false){
-    //             cout<<temp1.front().patientId<<" "<<endl;
-    //             temp1.pop();
-    //         }
+    
+    
+    void display() 
+    { // we need to print avg waiting time, total number of patients, number of urgent cases,and number of normal cases.
+        cout << "average waiting time= " << avg <<" seconds" <<endl;
+        cout << "total number of patients= " << n_served << endl;
+        cout << "number of urgent cases= " << system.getsizeUrgent() << endl;
+        cout << "number of normal cases= " << system.getsizeNormal() << endl;
+       
+    }
 
 
-    //     }
-
-    // }
+};
 
 
-void time_constraints (int current_time ){
-    while (current_time>0){
-        if (urgentqueue.empty()== false){
-            patient new_p = urgentqueue.front();
-             urgentqueue.pop();
+int main()
+{
+    cout << "which scenario do you want??" << endl;
+    cout << "enter 1 for simple scenrio, 2 for moderate, and 3 for crowded" << endl;
+    int value;
+    cin >> value;
+    wholeProgram p;
+    if (value == 1)
+    {
 
-             int time;
-             if (current_time<max_time){
-                time = current_time;
-             }else{
-                time = max_time;
-             }
-             current_time-=time;
-        }else if (normalqueue.empty()== false){
-            patient new_p = normalqueue.front();
-             normalqueue.pop();
+        p.generate_patients(100);
+      
 
-             int time;
-             if (current_time<max_time){
-                time = current_time;
-             }else{
-                time = max_time;
-             }
-             current_time-=time;
-        }else{
+
+    }
+    else if (value == 2)
+    {
+
+        p.generate_patients(300);
+    }
+    else if (value == 3)
+    {
+        p.generate_patients(700);
+    }
+    else {
+        cout << "invalid input !!!" << endl;
+    }
+   
+    while (1)
+    {
+        p.simulation(rand() % 6 + 5);
+        cout << "press enter to advance time or enter 0 to stop the program" << endl;
+        int c;
+        cin >> c;
+        if (c == 0)
+        {
+            p.display();
             break;
         }
+       
     }
+     
+        
 
 }
-};
-class requirments{
-    private:
-    vector<patient> p;
-     queueing_system system;
-     vector<int> wait_time;
-     int time_current;
-     int total_wait_time;
-     int n_served;
 
-     public:
-     requirments(){
-        time_current =0;
-        total_wait_time =0;
-        n_served =0;
-        
-     }
-     void generate_patients(int count){
-        p.clear();
-        for (int i=0;i<count;++i){
-            patient p1;
-            p1.Random(i+1);
-            p.push_back(p1);
-        }
-     }
-     void remove_patient(){
-        for (size_t i=0; i<p.size();++i){
-            if (p[i].time<=time_current){
-                system.add_to_list(p[i]){
-                    //i don't know how to continue 
-                }
-            }
-        }
-     }
-     void serve_patient(){
-        int N = (time_current % 6)+5;
-        int served = 0;
-
-        while (urgentqueue.empty()== false && served<N){
-            patient p1 = urgentqueue.front();
-            urgentqueue.pop();
-
-            int wait_time = time_current - p.time;
-            total_wait_time += wait_time;
-
-            cout<<"serving urgent patient: "<<endl;
-            cout<<"Arrival time: "<<p.time<<endl;
-            cout<<"waiting time: "<<wait_time<<endl;
-
-            ++served;
-            
-
-        }
-     
-      while (normalqueue.empty()== false && served<N){
-            patient p1 = normalqueue.front();
-            normalqueue.pop();
-
-            int wait_time = time_current - p.time;
-            total_wait_time += wait_time;
-
-            cout<<"serving normal patient: "<<endl;
-            cout<<"Arrival time: "<<p.time<<endl;
-            cout<<"waiting time: "<<wait_time<<endl;
-
-            ++served;
-            
-
-        }
-        n_served += served;
-     }
-     void simulation(int step){
-        for(time_current =0; time_current<step;++time_current){
-            serve_patient();
-            remove_patient();
-        }
-     }
-     void stat()const{
-        cout<<"total patient served: "<<n_served<<endl;
-        cout<<"average wait time: "<< n_served/total_wait_time<<endl;
-        
-     }
-
-};
